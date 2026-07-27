@@ -1,0 +1,13 @@
+# Compiled binaries
+*.bin
+*.exe
+*.out
+
+# Object files and libraries
+*.o
+*.obj
+*.a
+*.lib
+
+# Odin test runner artifacts
+test/test_helper.odin
