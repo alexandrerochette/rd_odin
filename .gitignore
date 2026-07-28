@@ -1,3 +1,7 @@
+.dependencies
+.generated
+.DS_Store
+
 # Compiled binaries
 *.bin
 *.exe
