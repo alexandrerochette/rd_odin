@@ -10,19 +10,13 @@ COLOR_YELLOW :: Color { 220, 220, 30, 255 }
 COLOR_BLACK ::  Color { 0, 0, 0, 255 }
 COLOR_WHITE ::  Color { 255, 255, 255, 255 }
 
-UPOIMT_ORIGIN:: UPoint { 0, 0 }
-UPOIMT_CENTER:: UPoint { 0.5, 0.5 }
-UPOIMT_MAX:: UPoint { 1, 1 }
-// x and y are in 0..1
-UPoint:: struct {
-    x: f32,
-    y: f32
-}
+
 
 
 Color :: struct {
     r,g,b,a: u8
 }
+
 
 CornerGradient :: struct {
     top_left: Color,

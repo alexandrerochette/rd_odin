@@ -1,8 +1,10 @@
 package canvas
 
+import "core:fmt"
 
 import "vendor:sdl3"
-import "core:fmt"
+import "vendor:sdl3/ttf"
+
 
 create_renderer_texture_from_gpu_texture :: proc(gpu_texture:^sdl3.GPUTexture, width, height: u32, renderer:^sdl3.Renderer) -> ^sdl3.Texture {
 
@@ -48,7 +50,7 @@ GPU_Resources2D :: struct {
     window: ^sdl3.Window,
     device: ^sdl3.GPUDevice,
     gpu_texture:^sdl3.GPUTexture,
-    raster_pipeline:^sdl3.GPUGraphicsPipeline,
+    drawing_resources: Drawing_GPU_Resources_2D,
     //renderer_texture:^sdl3.Texture,
     renderer: ^sdl3.Renderer,
     canvas_width: u32,
@@ -60,14 +62,17 @@ GPU_Resources2D_Error_Status :: enum {
     fatal_error
 }
 
-
-
 create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl3.GPUDevice, texture: ^sdl3.GPUTexture, width, height: u32)  -> (GPU_Resources2D, GPU_Resources2D_Error_Status)  {
+   
+    
+	
     result := GPU_Resources2D {}
     renderer2 := create_renderer_from_gpu_texture(texture, width, height, gpu_device, window)
 
     renderer, gpu_texture :=  renderer2, texture //create_gpu_renderer_and_texture(format, width, height, gpu_device)
 
+    window_format := sdl3.GetGPUSwapchainTextureFormat(gpu_device, window)
+    drawing_resources := create_drawing_gpu_resources(gpu_device, window_format, true)
     
     result.device = gpu_device
     result.gpu_texture = gpu_texture
@@ -75,6 +80,7 @@ create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl
     result.renderer = renderer
     result.canvas_height = height
     result.canvas_width = width
+    result.drawing_resources = drawing_resources
 
     return result, .success
 }
@@ -82,7 +88,9 @@ create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl
 
 create_gpu_window_texture_info :: proc(device: ^sdl3.GPUDevice, window: ^sdl3.Window) -> Texture_Info {
   
-    	
+    ttf_lib_init_success := ttf.Init()
+	fmt.assertf(ttf_lib_init_success, "Failed to initialize SDL3_ttf subsystem: %s\n", sdl3.GetError())
+		
 	if !sdl3.ClaimWindowForGPUDevice(device, window) {
         sdl3.DestroyGPUDevice(device)
 		fmt.eprintf("Failed to claim window swapchain: %s\n", sdl3.GetError())
@@ -169,7 +177,10 @@ create_2d_gpu_resource :: proc(window:^sdl3.Window) -> (GPU_Resources2D, GPU_Res
   
 }*/
 
-destroy_2d_gpu_resources::proc(res:GPU_Resources2D) {
+destroy_2d_gpu_resources::proc(res: ^GPU_Resources2D) {
+
+    destroy_drawing_gpu_resources(res.device, &res.drawing_resources)
+
     if res.renderer != nil {
         sdl3.DestroyRenderer(res.renderer)
     }
@@ -183,5 +194,6 @@ destroy_2d_gpu_resources::proc(res:GPU_Resources2D) {
    /* if res.device != nil {
         sdl3.DestroyGPUDevice(res.device)
     }*/
+     ttf.Quit()
 
 }

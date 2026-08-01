@@ -177,6 +177,8 @@ main :: proc() {
 	}
 	compiled_vertex_shader := sdl3.CreateGPUShader(gpu_device, vs_info)
 	defer sdl3.ReleaseGPUShader(gpu_device, compiled_vertex_shader)
+
+	
 	if compiled_vertex_shader == nil {
 		fmt.eprintf("Failed to load a vertex shader.\n")
 	}
@@ -202,8 +204,12 @@ main :: proc() {
 			num_samplers = 1, // 🌟 Matches our single font atlas binding!
 		}
 	}
+
+
 	compiled_fragment_shader := sdl3.CreateGPUShader(gpu_device, fs_info)
 	defer sdl3.ReleaseGPUShader(gpu_device, compiled_fragment_shader)
+
+
 	color_target_desc := [1]sdl3.GPUColorTargetDescription {
 		{
 			format = .R8G8B8A8_UNORM,
@@ -262,6 +268,8 @@ main :: proc() {
 	if graphics_pipeline == nil {
 		fmt.eprintf("Failed to create a graphics pipeline.\n")
 	}
+	
+	defer sdl3.ReleaseGPUGraphicsPipeline(gpu_device, graphics_pipeline)
 
 	init_cmd_buf := sdl3.AcquireGPUCommandBuffer(gpu_device)
 
@@ -482,6 +490,8 @@ main :: proc() {
 
 		_ = sdl3.SubmitGPUCommandBuffer(cmd_buf)
 	}
+
+
 }
 
 

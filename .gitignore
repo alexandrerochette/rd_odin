@@ -1,6 +1,8 @@
 .dependencies
 .generated
 .DS_Store
+.vscode
+bin/
 
 # Compiled binaries
 *.bin

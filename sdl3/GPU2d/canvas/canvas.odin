@@ -2,10 +2,15 @@ package canvas
 
 import "core:fmt"
 import "core:math"
+import vmem "core:mem/virtual"
+
 
 import "vendor:sdl3"
+import "vendor:sdl3/ttf"
 
-
+IPoint :: struct {
+    x, y : i32
+}
 
 
 Texture_Info :: struct {
@@ -18,33 +23,78 @@ Texture_Info :: struct {
 
 }
 
-Canvas :: struct {
-    res: GPU_Resources2D
+GPU_Canvas_Command :: struct {
+    text: ^ttf.Text,
+    atlas_draw_sequence: ^ttf.GPUAtlasDrawSequence,
+    colors: [dynamic]sdl3.FColor,
+    transform_matrix: [16]f32,  
+    fragments_global: FragmentsGlobalData,
+    is_sdf: bool
 }
 
-CanvasCreationError:: struct {
-    code: u32
+FragmentsGlobalData:: struct {
+    color: [4]f32,
+    u_weight: f32,
+    padding: [3] f32
+}
+
+
+Canvas :: struct {
+    res: GPU_Resources2D,
+    canvas_arena: vmem.Arena,
+    commands: ([dynamic] GPU_Canvas_Command),
+    text_engine: ^ttf.TextEngine,
+}
+
+CanvasCreationError:: enum {
+    None,
+    Fatal
 }
 
 CreateCanvasResult :: union {
     Canvas, CanvasCreationError
 }
 
-create::  proc(textureInfo: Texture_Info) -> CreateCanvasResult {
-    resources, err := create_2d_gpu_resources_for_texture(textureInfo.window, textureInfo.device, textureInfo.texture, textureInfo.width, textureInfo.height)
-    if err != nil {
-        return CreateCanvasResult(CanvasCreationError{0})
+create::  proc(textureInfo: Texture_Info, canvas: ^Canvas) -> CanvasCreationError {
+
+
+    resources, err_textures := create_2d_gpu_resources_for_texture(textureInfo.window, textureInfo.device, textureInfo.texture, textureInfo.width, textureInfo.height)
+    if err_textures != nil {
+        return .Fatal
     }
 
-    return Canvas{resources}
+    arena: vmem.Arena
+    
+    err := vmem.arena_init_growing(&arena)
+    assert(err == nil)
+
+
+    gpu_text_engine := ttf.CreateGPUTextEngine(resources.device)
+
+    //arena_alloc := vmem.arena_allocator(&arena)
+
+    //return Canvas{res = resources, canvas_arena = arena, text_engine = gpu_text_engine , commands = commands_arr}
+
+    canvas.res = resources
+    canvas.canvas_arena = arena
+
+    canvas.text_engine = gpu_text_engine
+
+    arena_alloc := vmem.arena_allocator(&canvas.canvas_arena)
+    commands_arr := make([dynamic]GPU_Canvas_Command, arena_alloc)
+    canvas.commands = commands_arr
+    return .None
 }
 
-destroy :: proc(canvas: Canvas) {
-    destroy_2d_gpu_resources(canvas.res)
+destroy :: proc(canvas: ^Canvas) {
+    destroy_2d_gpu_resources(&canvas.res)
+    ttf.DestroyGPUTextEngine(canvas.text_engine)
+    vmem.arena_destroy(& (canvas.canvas_arena) )
+  
 }
 
 
-fill_solid_rect :: proc(canvas: Canvas, x, y, w, h: f32, color: Color) {
+fill_solid_rect :: proc(canvas:^ Canvas, x, y, w, h: f32, color: Color) {
     gpu_resources := canvas.res
     
     fmt.println("color", color)
@@ -55,7 +105,7 @@ fill_solid_rect :: proc(canvas: Canvas, x, y, w, h: f32, color: Color) {
     }
 }
 
-fill_rect :: proc(canvas: Canvas, x, y, w, h: f32,  color_provider: ColorProvider)  {
+fill_rect :: proc(canvas: ^Canvas, position: ElementPosition, w, h: f32,  color_provider: ColorProvider)  {
 
     vertices :=  make([dynamic]sdl3.Vertex)
     indices :=  make([dynamic]i32)
@@ -67,6 +117,9 @@ fill_rect :: proc(canvas: Canvas, x, y, w, h: f32,  color_provider: ColorProvide
     pi :f32 = math.PI
     half_pi := 0.5 * pi
 
+    abs_pos := compute_element_position(position, w, h, f32(canvas.res.canvas_width), f32(canvas.res.canvas_height))
+    x := abs_pos.x
+    y := abs_pos.y
     center_point := sdl3.FPoint{x + w/2.0, y + w/2.0}
 
     center_color := compute_fcolor(color_provider, UPOIMT_CENTER )
@@ -141,7 +194,7 @@ fill_rect :: proc(canvas: Canvas, x, y, w, h: f32,  color_provider: ColorProvide
 
 
 
-colored_clear :: proc(canvas: Canvas, r, g, b, a: u8) {
+colored_clear :: proc(canvas: ^Canvas, r, g, b, a: u8) {
     gpu_resources := canvas.res
     if !sdl3.SetRenderDrawColor(gpu_resources.renderer, r, g, b, a) {
        fmt.eprintf("SetRenderDrawColor failed: %s\n", sdl3.GetError())
@@ -152,7 +205,7 @@ colored_clear :: proc(canvas: Canvas, r, g, b, a: u8) {
     }
 }
 
-clear :: proc(canvas: Canvas) {
+clear :: proc(canvas: ^Canvas) {
     gpu_resources := canvas.res
     if !sdl3.SetRenderDrawColor(gpu_resources.renderer, 0, 0, 0, 255) {
        fmt.eprintf("SetRenderDrawColor failed: %s\n", sdl3.GetError())
@@ -164,12 +217,16 @@ clear :: proc(canvas: Canvas) {
 }
 
 
-fill_rounded_rect :: proc(canvas: Canvas, x, y, w, h, radius: f32, color_provider: ColorProvider)  {
+fill_rounded_rect :: proc(canvas: ^Canvas, position: ElementPosition, w, h, radius: f32, color_provider: ColorProvider)  {
+  
     if radius <= 0 {
 
-        fill_rect(canvas, x, y, w, h, color_provider)
+        fill_rect(canvas, position, w, h, color_provider)
     }
-    
+    abs_pos := compute_element_position(position, w, h, f32(canvas.res.canvas_width), f32(canvas.res.canvas_height))
+    x := abs_pos.x
+    y := abs_pos.y
+
     r := radius
     vertices :=  make([dynamic]sdl3.Vertex)
     indices :=  make([dynamic]i32)
@@ -256,10 +313,26 @@ fill_rounded_rect :: proc(canvas: Canvas, x, y, w, h, radius: f32, color_provide
     sdl3.RenderGeometry(canvas.res.renderer, nil, raw_data(vertices), i32(vertex_count) , raw_data(indices), i32(len(indices)))
 }
 
-render :: proc(canvas: Canvas) {
+destroy_command :: proc(cmd: GPU_Canvas_Command) {
+    if cmd.text != nil {
+        ttf.DestroyText(cmd.text)
+    }
+}
+
+render :: proc(canvas: ^Canvas) {
     if !sdl3.RenderPresent(canvas.res.renderer) {
         fmt.eprintf("RenderPresent failed: %s\n", sdl3.GetError())
     }
-   
+    render_text(canvas)
     _ = sdl3.WaitForGPUIdle(canvas.res.device)
+
+    for command in canvas.commands {
+        destroy_command(command)
+    }
+
+    vmem.arena_free_all(&(canvas.canvas_arena))
+
+    arena_alloc := vmem.arena_allocator(&(canvas.canvas_arena))
+    commands_arr := make([dynamic]GPU_Canvas_Command, arena_alloc)
+    canvas.commands = commands_arr
 }

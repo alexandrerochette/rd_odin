@@ -38,51 +38,28 @@ run :: proc() {
 
     texture_info := canvas.create_gpu_window_texture_info(device, window)
     
-    cvr := canvas.create(texture_info)
-    cv, is_canvas := cvr.(canvas.Canvas)
-    if !is_canvas {
+
+	cv : canvas.Canvas
+    canvas_error := canvas.create(texture_info, &cv)
+   
+    if canvas_error != .None {
         fmt.eprintf("Could not create canvas\n")
 		return 
     }
-    defer canvas.destroy(cv)
 
-    canvas.clear(cv)
+    defer canvas.destroy(&cv)
+
+	font := canvas.load_scalable_font(&cv, "/Users/alexandrerochette/Projects/rd_odin/sdl3/GPU2d/assets/Anton-Regular.ttf")
+
+    canvas.clear(&cv)
 
 	color_provider := canvas.create_constant_color_provider(canvas.COLOR_GREEN)
 	color_provider = canvas.create_corner_gradient_color_provider(canvas.COLOR_RED, canvas.COLOR_GREEN, canvas.COLOR_BLUE, canvas.COLOR_YELLOW)
-    canvas.fill_rounded_rect(cv, 0, 0, 500, 500,  100, color_provider)
+ 	canvas.fill_rounded_rect(&cv, canvas.POSITION_CENTER, 800, 500,  100, color_provider)
+	//canvas.fill_rect(&cv, 0, 550, 500, 500, color_provider)
+	canvas.draw_text_line(&cv, font, canvas.POSITION_CENTER, 128, "Hello world!", color_provider)
+    canvas.render(&cv)
 
-	canvas.fill_rect(cv, 0, 550, 500, 500, color_provider)
-    canvas.render(cv)
-/*
-	gpu_resources, err := canvas.create_2d_gpu_resource(window)
-	if err != .success {
-		fmt.eprintf("Failed to get gpu resources SDL3: %s\n", sdl3.GetError())
-		return
-	}
-	defer canvas.destroy_2d_gpu_resources(gpu_resources)
-
-    if !sdl3.SetRenderDrawColor(gpu_resources.renderer, 30, 30, 30, 255) {
-       fmt.eprintf("SetRenderDrawColor failed: %s\n", sdl3.GetError())
-    }
-
-    if !sdl3.RenderClear(gpu_resources.renderer)  {
-       fmt.eprintf("RenderClear failed: %s\n", sdl3.GetError())
-    }
-
-    sdl3.SetRenderDrawColor(gpu_resources.renderer, 0, 120, 255, 255) // blue
-    blue_box := sdl3.FRect{0.0, 0.0, 300.0, 200.0}
-    if ! sdl3.RenderFillRect(gpu_resources.renderer, &blue_box) {
-         fmt.eprintf("RenderFillRect failed: %s\n", sdl3.GetError())
-    }
-    
- 
-    if !sdl3.RenderPresent(gpu_resources.renderer) {
-        fmt.eprintf("RenderPresent failed: %s\n", sdl3.GetError())
-    }
-   
-    _ = sdl3.WaitForGPUIdle(gpu_resources.device)
-*/
 
 	running := true
 	event: sdl3.Event
