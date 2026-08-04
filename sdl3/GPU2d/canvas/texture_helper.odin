@@ -62,7 +62,7 @@ GPU_Resources2D_Error_Status :: enum {
     fatal_error
 }
 
-create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl3.GPUDevice, texture: ^sdl3.GPUTexture, width, height: u32)  -> (GPU_Resources2D, GPU_Resources2D_Error_Status)  {
+create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl3.GPUDevice, texture: ^sdl3.GPUTexture, width, height: u32, format: sdl3.GPUTextureFormat)  -> (GPU_Resources2D, GPU_Resources2D_Error_Status)  {
    
     
 	
@@ -71,8 +71,8 @@ create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl
 
     renderer, gpu_texture :=  renderer2, texture //create_gpu_renderer_and_texture(format, width, height, gpu_device)
 
-    window_format := sdl3.GetGPUSwapchainTextureFormat(gpu_device, window)
-    drawing_resources := create_drawing_gpu_resources(gpu_device, window_format, true)
+    //window_format := sdl3.GetGPUSwapchainTextureFormat(gpu_device, window)
+    drawing_resources := create_drawing_gpu_resources(gpu_device, format, true)
     
     result.device = gpu_device
     result.gpu_texture = gpu_texture
@@ -86,7 +86,7 @@ create_2d_gpu_resources_for_texture:: proc(window:^sdl3.Window, gpu_device: ^sdl
 }
 
 
-create_gpu_window_texture_info :: proc(device: ^sdl3.GPUDevice, window: ^sdl3.Window) -> Texture_Info {
+create_gpu_window_texture_info :: proc(device: ^sdl3.GPUDevice, window: ^sdl3.Window, scaling:f32=1.0) -> Texture_Info {
   
     ttf_lib_init_success := ttf.Init()
 	fmt.assertf(ttf_lib_init_success, "Failed to initialize SDL3_ttf subsystem: %s\n", sdl3.GetError())
@@ -101,7 +101,7 @@ create_gpu_window_texture_info :: proc(device: ^sdl3.GPUDevice, window: ^sdl3.Wi
     width_s, height_s: i32
     sdl3.GetWindowSizeInPixels(window, &width_s, &height_s)
     format := sdl3.GetGPUSwapchainTextureFormat(device, window)
-    width, height := u32(width_s), u32(height_s)
+    width, height := u32(f32(width_s) * scaling), u32(f32(height_s) * scaling)
 
     offscreen_texture_desc := sdl3.GPUTextureCreateInfo{
         type   = .D2,

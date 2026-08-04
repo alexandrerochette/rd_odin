@@ -30,6 +30,7 @@ StageAttributes VSMain(VSInput input) {
 
 [shader("fragment")]
 float4 FSMain(StageAttributes input) : SV_Target {
-    float alpha = font_texture.Sample(font_sampler, input.uv).a;
-    return float4(1, 1, 1, alpha) * input.color;
+    float4 sample = font_texture.Sample(font_sampler, input.uv);
+    return sample * input.color;
+    //return float4(1, 1, 0, 1);
 }

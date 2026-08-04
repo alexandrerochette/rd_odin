@@ -27,8 +27,6 @@ float4 FSMain(StageAttributes input) : SV_Target {
 
  
     return float4(1.0, 1.0, 1.0, alpha) * input.color * fragmentsGlobal.color;
-
-  
 }
 
 
